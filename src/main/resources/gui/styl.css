@@ -1,0 +1,132 @@
+/* Vzhled aplikace ProgSklady */
+
+.root {
+    -fx-font-size: 13px;
+    -fx-base: #eceff3;
+    -fx-accent: #2f6fd6;
+    -fx-focus-color: #2f6fd6;
+}
+
+/* ---------- tmavá horní lišta s přepínačem skladů ---------- */
+.horni-lista {
+    -fx-background-color: #1f2a37;
+}
+.nazev-aplikace {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 8 0 0;
+}
+.sklad-pill {
+    -fx-background-color: #33414f;
+    -fx-text-fill: #dbe3ea;
+    -fx-background-radius: 16;
+    -fx-padding: 6 14 6 14;
+    -fx-cursor: hand;
+}
+.sklad-pill:hover {
+    -fx-background-color: #435466;
+}
+.sklad-pill:selected {
+    -fx-background-color: #f2b632;
+    -fx-text-fill: #1f2a37;
+    -fx-font-weight: bold;
+}
+.lista-tlacitko {
+    -fx-background-color: transparent;
+    -fx-border-color: #6b7c8d;
+    -fx-border-radius: 4;
+    -fx-text-fill: #ffffff;
+    -fx-cursor: hand;
+}
+.lista-tlacitko:hover {
+    -fx-background-color: #33414f;
+}
+
+/* ---------- tabulka ---------- */
+.nadpis-tabulky {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2a37;
+}
+.cislo {
+    -fx-alignment: CENTER-RIGHT;
+}
+.table-row-cell:aktualni {
+    -fx-background-color: #ffe9a6;
+}
+.table-row-cell:aktualni .table-cell {
+    -fx-font-weight: bold;
+    -fx-text-fill: #4a3500;
+}
+.table-row-cell:aktualni:selected {
+    -fx-background-color: #f2b632;
+}
+
+.log {
+    -fx-font-family: "Monospaced";
+    -fx-font-size: 12px;
+}
+
+/* ---------- pravý panel ---------- */
+.sekce {
+    -fx-font-weight: bold;
+    -fx-text-fill: #3a4a5a;
+    -fx-padding: 4 0 0 0;
+}
+.napoveda {
+    -fx-text-fill: #66717d;
+    -fx-font-size: 12px;
+}
+.upozorneni {
+    -fx-background-color: #fff4d6;
+    -fx-border-color: #f2b632;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 8;
+    -fx-text-fill: #5c4300;
+}
+.pozice {
+    -fx-background-radius: 14;
+    -fx-padding: 4 12 4 12;
+}
+.pozice:selected {
+    -fx-background-color: #2f6fd6;
+    -fx-text-fill: #ffffff;
+}
+.primarni {
+    -fx-background-color: #2f6fd6;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 7 12 7 12;
+}
+.primarni:hover {
+    -fx-background-color: #245bb3;
+}
+.nebezpecne {
+    -fx-background-color: #d64545;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 7 12 7 12;
+}
+.nebezpecne:hover {
+    -fx-background-color: #b23636;
+}
+.velke-cislo {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2a37;
+}
+
+/* ---------- stavový řádek ---------- */
+.stavovy-radek {
+    -fx-background-color: #e3e7ec;
+    -fx-border-color: #c8ced6;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 5 12 5 12;
+}
+.legenda {
+    -fx-background-color: #ffe9a6;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 3;
+}
