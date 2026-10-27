@@ -67,6 +67,7 @@ public class Sklady {
             default -> throw new IllegalArgumentException(
                     "Vložit lze jen na pozici první, poslední, předchůdce nebo následník.");
         }
+        produkt.setSklad(sklad);   // až po úspěšném vložení
     }
 
     public Produkt zpristupniProdukt(enumPozice pozice, enumSklad sklad) {
@@ -97,6 +98,52 @@ public class Sklady {
         IAbstrDoubleList<Produkt> kam = seznamSkladu(cil);
         Produkt produkt = odkud.odeberAktualni();
         kam.vlozPosledni(produkt);
+        produkt.setSklad(cil);
+    }
+
+    // Odebere konkrétní produkt ze seznamu jeho skladu (podle identity objektu, ne podle pozice).
+    // Seznam umí odebírat jen podle pozice, proto se k produktu nejdřív dojde přes zpřístupňování.
+    // Aktuální prvek zůstane tam, kde byl (pokud se neodebíral právě on). Složitost O(n).
+    public boolean odeberKonkretni(Produkt produkt) {
+        if (produkt == null || produkt.getSklad() == null) {
+            return false;
+        }
+        IAbstrDoubleList<Produkt> seznam = seznamSkladu(produkt.getSklad());
+        int pozice = poradi(seznam, produkt);
+        if (pozice < 0) {
+            return false;
+        }
+        Produkt puvodniAktualni = seznam.zpristupniAktualni();
+        int puvodniPozice = poradi(seznam, puvodniAktualni);
+
+        presunNa(seznam, pozice);
+        seznam.odeberAktualni();
+
+        if (puvodniAktualni != produkt) {
+            // za odebraným prvkem se všechno posunulo o jedno místo dopředu
+            presunNa(seznam, puvodniPozice > pozice ? puvodniPozice - 1 : puvodniPozice);
+        }
+        return true;
+    }
+
+    // pořadí produktu v seznamu (0 = první), nebo -1, když tam není; prochází se iterátorem
+    private static int poradi(IAbstrDoubleList<Produkt> seznam, Produkt hledany) {
+        int i = 0;
+        for (Produkt p : seznam) {
+            if (p == hledany) {
+                return i;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    // nastaví aktuální prvek na zadané pořadí
+    private static void presunNa(IAbstrDoubleList<Produkt> seznam, int pozice) {
+        seznam.zpristupniPrvni();
+        for (int i = 0; i < pozice; i++) {
+            seznam.zpristupniNaslednika();
+        }
     }
 
 
@@ -150,10 +197,20 @@ public class Sklady {
 
 
     public int importData(String soubor) {
-        List<String> radky = nactiRadky(Path.of(soubor));
-
         int nacteno = 0;
-        for (String radek : radky) {
+        for (Produkt produkt : nactiProdukty(soubor)) {
+            seznamSkladu(produkt.getSklad()).vlozPosledni(produkt);
+            nacteno++;
+        }
+        return nacteno;
+    }
+
+    // Přečte soubor sklad;id;nazev;kategorie;cena;mnozstvi a vrátí platné produkty
+    // s nastaveným skladem. Hlavička a vadné řádky se přeskočí. Do skladů nic nevkládá,
+    // takže to může použít i AgendaSklady (která navíc hlídá duplicitní ID).
+    public static List<Produkt> nactiProdukty(String soubor) {
+        List<Produkt> produkty = new ArrayList<>();
+        for (String radek : nactiRadky(Path.of(soubor))) {
             String[] casti = radek.split(";");
             if (casti.length < 6) {
                 continue;
@@ -164,13 +221,13 @@ public class Sklady {
                         casti[1], casti[2], casti[3],
                         Double.parseDouble(casti[4].trim().replace(',', '.')),
                         Integer.parseInt(casti[5].trim()));
-                seznamSkladu(sklad).vlozPosledni(produkt);
-                nacteno++;
+                produkt.setSklad(sklad);
+                produkty.add(produkt);
             } catch (IllegalArgumentException e) {
-
+                // hlavička, špatné číslo, neexistující sklad nebo neplatný produkt -> řádek přeskočit
             }
         }
-        return nacteno;
+        return produkty;
     }
 
 

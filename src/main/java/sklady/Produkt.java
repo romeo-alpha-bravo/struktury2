@@ -9,6 +9,8 @@ public class Produkt {
     private final String kategorie;
     private final double cena;
     private final int mnozstvi;
+    // aktuální sklad: nastaví se při vložení či importu, změní se při přesunu
+    private enumSklad sklad;
 
     public Produkt(String id, String nazev, String kategorie, double cena, int mnozstvi) {
         if ((id == null) || (id.isBlank())) {
@@ -56,9 +58,18 @@ public class Produkt {
         return mnozstvi;
     }
 
+    public enumSklad getSklad() {
+        return sklad;
+    }
+
+    public void setSklad(enumSklad sklad) {
+        this.sklad = sklad;
+    }
+
     @Override
     public String toString() {
-        return String.format(Locale.ROOT, "%s | %s | %s | %.2f Kč | %d ks",
+        String text = String.format(Locale.ROOT, "%s | %s | %s | %.2f Kč | %d ks",
                 id, nazev, kategorie, cena, mnozstvi);
+        return sklad == null ? text : text + " | " + sklad.getNazev();
     }
 }
