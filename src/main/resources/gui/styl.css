@@ -130,3 +130,21 @@
     -fx-padding: 2 8 2 8;
     -fx-background-radius: 3;
 }
+
+/* ---------- semestrální práce B: hledání a BVS ---------- */
+.lista-hledani {
+    -fx-background-color: #33414f;
+    -fx-text-fill: #ffffff;
+    -fx-prompt-text-fill: #9aa8b5;
+    -fx-background-radius: 4;
+}
+.karta {
+    -fx-background-color: #f6f8fa;
+    -fx-border-color: #d5dbe1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-padding: 8 10 8 10;
+}
+.karta-popisek {
+    -fx-text-fill: #66717d;
+}

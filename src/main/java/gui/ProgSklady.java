@@ -47,9 +47,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.StringConverter;
-import sklady.GeneratorProduktu;
+import abstrtable.eTypProhl;
+import sklady.AgendaSklady;
 import sklady.Produkt;
-import sklady.Sklady;
 import sklady.enumPozice;
 import sklady.enumSklad;
 
@@ -61,9 +61,11 @@ import java.nio.file.Files;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 
 public class ProgSklady extends Application {
@@ -74,8 +76,8 @@ public class ProgSklady extends Application {
     private static final PseudoClass AKTUALNI = PseudoClass.getPseudoClass("aktualni");
     private static final DateTimeFormatter CAS = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    private final Sklady sklady = new Sklady();
-    private final GeneratorProduktu generator = new GeneratorProduktu();
+    // všechny operace jdou přes AgendaSklady, aby seznamy skladů a BVS zůstaly v souladu
+    private final AgendaSklady agenda = new AgendaSklady();
 
     private Stage okno;
 
@@ -91,6 +93,11 @@ public class ProgSklady extends Application {
     private final Label lblNadpis = new Label();
     private final TextField tfLimit = new TextField("10");
     private Integer aktivniLimit = null;          // null = filtr vypnutý
+    private final Button btZpet = new Button("Zpět na sklad");
+
+    // výsledek hledání v rozsahu / průchodu BVS: když není null, tabulka ukazuje jeho produkty
+    private Supplier<Produkt[]> zdrojVysledku = null;
+    private String popisVysledku = "";
 
     // formulář produktu
     private final TextField tfId = new TextField();
@@ -109,11 +116,31 @@ public class ProgSklady extends Application {
     private final RadioButton rbDoVybraneho = new RadioButton("do vybraného skladu");
     private final RadioButton rbNahodne = new RadioButton("náhodně do všech skladů");
 
+    // hledání podle ID a v rozsahu
+    private final TextField tfRychleHledani = new TextField();
+    private final TextField tfHledatId = new TextField();
+    private final TextField tfOd = new TextField("P010");
+    private final TextField tfDo = new TextField("P020");
+    private final Label[] detail = new Label[6];   // ID, název, kategorie, cena, množství, sklad
+    private Produkt nalezeny = null;
+
+    // BVS
+    private final RadioButton rbSirka = new RadioButton("do šířky (po úrovních)");
+    private final RadioButton rbHloubka = new RadioButton("do hloubky in-order (vzestupně podle ID)");
+    private final Label lblStromPocet = new Label();
+    private final Label lblStromVyska = new Label();
+    private final Label lblStromOptimum = new Label();
+
+    // pravý panel (kvůli přepnutí na záložku Hledání z rychlého hledání)
+    private TabPane pravyPanel;
+    private Tab tabHledani;
+
     // statistiky, log, stavový řádek
     private final Label lblPrumerVelky = new Label("–");
     private final TextArea taLog = new TextArea();
     private final Label lblPocet = new Label();
     private final Label lblPrumer = new Label();
+    private final Label lblStrom = new Label();
 
     @Override
     public void start(Stage stage) {
@@ -123,7 +150,7 @@ public class ProgSklady extends Application {
         koren.setTop(new VBox(vytvorMenu(), vytvorListuSkladu()));
 
         SplitPane stred = new SplitPane(vytvorStred(), vytvorPravyPanel());
-        stred.setDividerPositions(0.66);
+        stred.setDividerPositions(0.63);
         SplitPane.setResizableWithParent(stred.getItems().get(1), false);
         koren.setCenter(stred);
         koren.setBottom(vytvorStavovyRadek());
@@ -134,14 +161,15 @@ public class ProgSklady extends Application {
             scena.getStylesheets().add(styl.toExternalForm());
         }
 
-        stage.setTitle("ProgSklady – Datové struktury, semestrální práce A");
+        stage.setTitle("ProgSklady – Datové struktury, semestrální práce B");
         stage.setMinWidth(1000);
         stage.setMinHeight(640);
         stage.setScene(scena);
         stage.show();
 
         log("Aplikace spuštěna. Data lze zadat formulářem (záložka Produkt), importovat ze souboru "
-                + "(Soubor → Importovat CSV) nebo vygenerovat (záložka Generátor).");
+                + "(Soubor → Importovat CSV) nebo vygenerovat (záložka Generátor). "
+                + "Produkty se ukládají do seznamů skladů a zároveň do BVS podle ID.");
         obnov();
     }
 
@@ -177,7 +205,9 @@ public class ProgSklady extends Application {
                     "Sklady jsou pole abstraktních obousměrných necyklických seznamů.\n\n"
                             + "Žlutý řádek v tabulce je aktuální prvek seznamu daného skladu. "
                             + "Mění se tlačítky v části \"Pohyb v seznamu\".\n\n"
-                            + "Předchůdce a následník se vždy počítají vůči aktuálnímu prvku.",
+                            + "Předchůdce a následník se vždy počítají vůči aktuálnímu prvku.\n\n"
+                            + "Všechny produkty jsou navíc v binárním vyhledávacím stromu (BVS) podle ID. "
+                            + "Strom se vyvažuje jen tlačítkem \"Vybudovat vyvážený strom\" (záložka BVS).",
                     ButtonType.OK);
             a.initOwner(okno);
             a.setHeaderText("ProgSklady");
@@ -214,6 +244,7 @@ public class ProgSklady extends Application {
                 return;
             }
             vybranyVsechny.set(novy == tlVsechny);
+            zdrojVysledku = null;                    // výběr skladu = zpět na obsah skladu
             enumSklad s = vybranySklad();
             if (s != null) {
                 cbZdroj.setValue(s);
@@ -223,10 +254,23 @@ public class ProgSklady extends Application {
 
         Region mezera = new Region();
         HBox.setHgrow(mezera, Priority.ALWAYS);
+        tfRychleHledani.setPromptText("Hledat ID…");
+        tfRychleHledani.setPrefColumnCount(8);
+        tfRychleHledani.getStyleClass().add("lista-hledani");
+        tfRychleHledani.setOnAction(e -> {
+            tfHledatId.setText(tfRychleHledani.getText());
+            najdiPodleId();
+        });
+        Button btHledat = new Button("Najít");
+        btHledat.getStyleClass().add("lista-tlacitko");
+        btHledat.setOnAction(e -> {
+            tfHledatId.setText(tfRychleHledani.getText());
+            najdiPodleId();
+        });
         Button btImport = new Button("Importovat CSV");
         btImport.getStyleClass().add("lista-tlacitko");
         btImport.setOnAction(e -> importuj());
-        lista.getChildren().addAll(mezera, btImport);
+        lista.getChildren().addAll(mezera, tfRychleHledani, btHledat, new Separator(Orientation.VERTICAL), btImport);
 
         lista.setAlignment(Pos.CENTER_LEFT);
         lista.setPadding(new Insets(10, 14, 10, 14));
@@ -245,13 +289,18 @@ public class ProgSklady extends Application {
         Button btVse = new Button("Zobrazit vše");
         btVse.setOnAction(e -> {
             aktivniLimit = null;
+            zdrojVysledku = null;
             log("Filtr zrušen, zobrazeny všechny produkty.");
             obnov();
         });
 
         Region mezera = new Region();
         HBox.setHgrow(mezera, Priority.ALWAYS);
-        HBox hlavicka = new HBox(8, lblNadpis, mezera, new Label("Množství menší než"), tfLimit, btFiltr, btVse);
+        btZpet.setOnAction(e -> {
+            zdrojVysledku = null;
+            obnov();
+        });
+        HBox hlavicka = new HBox(8, lblNadpis, btZpet, mezera, new Label("Množství menší než"), tfLimit, btFiltr, btVse);
         hlavicka.setAlignment(Pos.CENTER_LEFT);
 
         vytvorTabulku();
@@ -270,6 +319,17 @@ public class ProgSklady extends Application {
     }
 
     private void vytvorTabulku() {
+        TableColumn<Radek, Integer> sPoradi = new TableColumn<>("#");
+        sPoradi.setSortable(false);
+        sPoradi.setPrefWidth(45);
+        sPoradi.getStyleClass().add("cislo");
+        sPoradi.setCellFactory(sl -> new TableCell<>() {
+            @Override
+            protected void updateItem(Integer hodnota, boolean prazdna) {
+                super.updateItem(hodnota, prazdna);
+                setText(prazdna ? null : String.valueOf(getIndex() + 1));   // pořadí v seznamu / průchodu
+            }
+        });
         TableColumn<Radek, String> sSklad = sloupec("Sklad", r -> r.sklad().getNazev(), 80);
         TableColumn<Radek, String> sId = sloupec("ID", r -> r.produkt().getId(), 80);
         TableColumn<Radek, String> sNazev = sloupec("Název", r -> r.produkt().getNazev(), 230);
@@ -286,6 +346,7 @@ public class ProgSklady extends Application {
             }
         });
 
+        tabulka.getColumns().add(sPoradi);
         tabulka.getColumns().add(sSklad);
         tabulka.getColumns().add(sId);
         tabulka.getColumns().add(sNazev);
@@ -319,10 +380,12 @@ public class ProgSklady extends Application {
         Tab presun = new Tab("Přesun", posouvatelne(zalozkaPresun()));
         Tab gen = new Tab("Generátor", posouvatelne(zalozkaGenerator()));
         Tab sklad = new Tab("Sklad", posouvatelne(zalozkaSklad()));
-        TabPane panel = new TabPane(produkt, presun, gen, sklad);
-        panel.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-        panel.setMinWidth(360);
-        return panel;
+        tabHledani = new Tab("Hledání", posouvatelne(zalozkaHledani()));
+        Tab strom = new Tab("BVS", posouvatelne(zalozkaStrom()));
+        pravyPanel = new TabPane(produkt, tabHledani, strom, presun, gen, sklad);
+        pravyPanel.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        pravyPanel.setMinWidth(430);
+        return pravyPanel;
     }
 
     private ScrollPane posouvatelne(VBox obsah) {
@@ -469,11 +532,106 @@ public class ProgSklady extends Application {
 
         Label napoveda = new Label("Generátor vytváří náhodné produkty Apple (iPhone, iPad, Mac, Apple Watch, "
                 + "audio, domácnost, příslušenství, monitory) s ID G0001, G0002, … "
-                + "a vkládá je na konec seznamu.");
+                + "a vkládá je na konec seznamu i do BVS. Už existující ID se přeskočí.");
         napoveda.setWrapText(true);
         napoveda.getStyleClass().add("napoveda");
 
         return new VBox(10, sekce("Generátor produktů Apple"), pocet, rbDoVybraneho, rbNahodne, bt, napoveda);
+    }
+
+    private VBox zalozkaHledani() {
+        // --- jedno ID
+        tfHledatId.setPromptText("např. P033");
+        tfHledatId.setOnAction(e -> najdiPodleId());
+        HBox.setHgrow(tfHledatId, Priority.ALWAYS);
+        Button btNajdi = new Button("Najít");
+        btNajdi.getStyleClass().add("primarni");
+        btNajdi.setOnAction(e -> najdiPodleId());
+        HBox radekId = new HBox(8, new Label("ID:"), tfHledatId, btNajdi);
+        radekId.setAlignment(Pos.CENTER_LEFT);
+
+        GridPane karta = new GridPane();
+        karta.setHgap(10);
+        karta.setVgap(4);
+        karta.getStyleClass().add("karta");
+        String[] popisky = {"ID:", "Název:", "Kategorie:", "Cena za kus:", "Množství:", "Sklad:"};
+        for (int i = 0; i < popisky.length; i++) {
+            detail[i] = new Label("–");
+            detail[i].setWrapText(true);
+            Label popisek = new Label(popisky[i]);
+            popisek.getStyleClass().add("karta-popisek");
+            karta.addRow(i, popisek, detail[i]);
+        }
+
+        Button btUkaz = new Button("Ukázat ve skladu");
+        btUkaz.setMaxWidth(Double.MAX_VALUE);
+        btUkaz.setOnAction(e -> ukazVeSkladu());
+        Button btOdeberId = new Button("Odebrat podle ID");
+        btOdeberId.getStyleClass().add("nebezpecne");
+        btOdeberId.setMaxWidth(Double.MAX_VALUE);
+        btOdeberId.setOnAction(e -> odeberPodleId());
+        HBox.setHgrow(btUkaz, Priority.ALWAYS);
+        HBox.setHgrow(btOdeberId, Priority.ALWAYS);
+        HBox akceId = new HBox(8, btUkaz, btOdeberId);
+
+        // --- rozsah
+        tfOd.setPrefColumnCount(6);
+        tfDo.setPrefColumnCount(6);
+        tfOd.setOnAction(e -> najdiRozsah());
+        tfDo.setOnAction(e -> najdiRozsah());
+        HBox radekRozsah = new HBox(8, new Label("Od:"), tfOd, new Label("Do:"), tfDo);
+        radekRozsah.setAlignment(Pos.CENTER_LEFT);
+        Button btRozsah = new Button("Najít v rozsahu");
+        btRozsah.getStyleClass().add("primarni");
+        btRozsah.setMaxWidth(Double.MAX_VALUE);
+        btRozsah.setOnAction(e -> najdiRozsah());
+
+        Label napoveda = new Label("Hledá se v BVS podle ID. Rozsah zahrnuje obě meze a výsledek je seřazený "
+                + "vzestupně podle ID (zobrazí se v tabulce). ID se porovnávají jako text, proto P010 < P9.");
+        napoveda.setWrapText(true);
+        napoveda.getStyleClass().add("napoveda");
+
+        return new VBox(10,
+                sekce("Najít produkt podle ID"), radekId, karta, akceId,
+                new Separator(),
+                sekce("Produkty v rozsahu ID"), radekRozsah, btRozsah, napoveda);
+    }
+
+    private VBox zalozkaStrom() {
+        ToggleGroup typ = new ToggleGroup();
+        rbSirka.setToggleGroup(typ);
+        rbHloubka.setToggleGroup(typ);
+        rbHloubka.setSelected(true);
+
+        GridPane stat = new GridPane();
+        stat.setHgap(10);
+        stat.setVgap(4);
+        stat.getStyleClass().add("karta");
+        stat.addRow(0, popisek("Počet uzlů:"), lblStromPocet);
+        stat.addRow(1, popisek("Výška stromu:"), lblStromVyska);
+        stat.addRow(2, popisek("Nejmenší možná výška:"), lblStromOptimum);
+
+        Button btProjit = new Button("Projít strom");
+        btProjit.getStyleClass().add("primarni");
+        btProjit.setMaxWidth(Double.MAX_VALUE);
+        btProjit.setOnAction(e -> projdiStrom());
+
+        Button btVybuduj = new Button("Vybudovat vyvážený strom");
+        btVybuduj.setMaxWidth(Double.MAX_VALUE);
+        btVybuduj.setOnAction(e -> vybuduj());
+
+        Label napoveda = new Label("Průchod se zobrazí v tabulce, sloupec # ukazuje pořadí. "
+                + "Strom se sám nevyvažuje: po importu seřazených ID (P001, P002, …) vznikne "
+                + "\"řetěz\" s výškou rovnou počtu uzlů a hledání je O(n). Vybudováním se strom přestaví "
+                + "volbou středních ID na vyvážený a hledání je pak O(log n).");
+        napoveda.setWrapText(true);
+        napoveda.getStyleClass().add("napoveda");
+
+        return new VBox(10,
+                sekce("Binární vyhledávací strom"), stat,
+                sekce("Průchod"), rbHloubka, rbSirka, btProjit,
+                new Separator(),
+                sekce("Vyvážení"), btVybuduj, napoveda);
     }
 
     private VBox zalozkaSklad() {
@@ -513,7 +671,8 @@ public class ProgSklady extends Application {
         legenda.getStyleClass().add("legenda");
         Region mezera = new Region();
         HBox.setHgrow(mezera, Priority.ALWAYS);
-        HBox radek = new HBox(16, lblPocet, new Separator(Orientation.VERTICAL), lblPrumer, mezera, legenda);
+        HBox radek = new HBox(16, lblPocet, new Separator(Orientation.VERTICAL), lblPrumer,
+                new Separator(Orientation.VERTICAL), lblStrom, mezera, legenda);
         radek.setAlignment(Pos.CENTER_LEFT);
         radek.getStyleClass().add("stavovy-radek");
         return radek;
@@ -524,6 +683,12 @@ public class ProgSklady extends Application {
     private Label sekce(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("sekce");
+        return l;
+    }
+
+    private Label popisek(String text) {
+        Label l = new Label(text);
+        l.getStyleClass().add("karta-popisek");
         return l;
     }
 
@@ -574,7 +739,7 @@ public class ProgSklady extends Application {
             return;
         }
         boolean ok = proved("Zpřístupnění", () -> {
-            Produkt p = sklady.zpristupniProdukt(pozice, s);
+            Produkt p = agenda.zpristupniProdukt(pozice, s);
             log(s.getNazev() + ": zpřístupněn " + nazevPozice(pozice) + " → " + p);
         });
         if (ok) {
@@ -591,8 +756,8 @@ public class ProgSklady extends Application {
         enumPozice pozice = vybranaPozice();
         boolean ok = proved("Vložení produktu", () -> {
             Produkt p = produktZFormulare();
-            sklady.vlozProdukt(p, pozice, s);
-            log(s.getNazev() + ": vložen produkt na pozici " + nazevPozice(pozice) + " → " + p);
+            agenda.vloz(p, pozice, s);
+            log(s.getNazev() + ": vložen produkt na pozici " + nazevPozice(pozice) + " (i do BVS) → " + p);
         });
         if (ok) {
             for (TextField tf : List.of(tfId, tfNazev, tfKategorie, tfCena, tfMnozstvi)) {
@@ -609,8 +774,8 @@ public class ProgSklady extends Application {
         }
         enumPozice pozice = vybranaPozice();
         proved("Odebrání produktu", () -> {
-            Produkt p = sklady.odeberProdukt(pozice, s);
-            log(s.getNazev() + ": odebrán " + nazevPozice(pozice) + " → " + p);
+            Produkt p = agenda.odeberProdukt(pozice, s);
+            log(s.getNazev() + ": odebrán " + nazevPozice(pozice) + " (i z BVS) → " + p);
         });
     }
 
@@ -618,8 +783,8 @@ public class ProgSklady extends Application {
         enumSklad zdroj = cbZdroj.getValue();
         enumSklad cil = cbCil.getValue();
         proved("Přesun produktu", () -> {
-            Produkt p = sklady.zpristupniProdukt(enumPozice.AKTUALNI, zdroj);   // jen pro zápis do logu
-            sklady.presunProdukt(zdroj, cil);
+            Produkt p = agenda.zpristupniProdukt(enumPozice.AKTUALNI, zdroj);   // jen pro zápis do logu
+            agenda.presunProdukt(zdroj, cil);
             log("Přesun: " + p + " ze skladu " + zdroj.getCislo() + " na konec skladu " + cil.getCislo());
         });
     }
@@ -632,18 +797,16 @@ public class ProgSklady extends Application {
             }
             enumSklad vybrany = vybranySklad();
             boolean nahodne = rbNahodne.isSelected() || vybrany == null;
-            for (int i = 0; i < pocet; i++) {
-                enumSklad cil = nahodne ? generator.nahodnySklad() : vybrany;
-                sklady.vlozProdukt(generator.dalsi(), enumPozice.POSLEDNI, cil);
-            }
-            log("Generátor: vytvořeno " + pocet + " produktů Apple "
-                    + (nahodne ? "(náhodně do všech skladů)." : "do skladu " + vybrany.getCislo() + "."));
+            int vlozeno = agenda.generuj(pocet, nahodne ? null : vybrany);
+            log("Generátor: vytvořeno " + vlozeno + " produktů Apple "
+                    + (nahodne ? "(náhodně do všech skladů)." : "do skladu " + vybrany.getCislo() + ".")
+                    + " BVS má teď " + agenda.getPocetVeStromu() + " uzlů.");
         });
     }
 
     private void prumernaCena() {
         enumSklad s = vybranySklad();
-        float prumer = sklady.zjistiPrumernouCenu(s);
+        float prumer = agenda.zjistiPrumernouCenu(s);
         String kde = s == null ? "všech skladů" : "skladu " + s.getCislo();
         log(String.format(Locale.ROOT, "Průměrná cena za kus %s: %.2f Kč", kde, prumer));
         obnov();
@@ -653,8 +816,9 @@ public class ProgSklady extends Application {
         proved("Filtr pod limitem", () -> {
             int limit = celeCislo(tfLimit.getText(), "Limit");
             aktivniLimit = limit;
+            zdrojVysledku = null;                    // filtr se týká obsahu skladů
             enumSklad s = vybranySklad();
-            int nalezeno = sklady.zobrazProduktyPodLimitem(s, limit).length;
+            int nalezeno = agenda.zobrazProduktyPodLimitem(s, limit).length;
             log("Produkty s množstvím menším než " + limit + " (" + (s == null ? "všechny sklady" : s.getNazev())
                     + "): " + nalezeno);
         });
@@ -675,9 +839,132 @@ public class ProgSklady extends Application {
             return;
         }
         proved("Zrušení skladu", () -> {
-            sklady.zrus(s);
-            log("Zrušeno: " + co + ".");
+            agenda.zrus(s);
+            log("Zrušeno: " + co + " (seznamy i BVS).");
         });
+    }
+
+    // ---------------------------------------------------------------- BVS: hledání, rozsah, průchod
+
+    private void najdiPodleId() {
+        String id = tfHledatId.getText().trim();
+        if (id.isEmpty()) {
+            chyba("Hledání", "Zadejte ID produktu.");
+            return;
+        }
+        pravyPanel.getSelectionModel().select(tabHledani);
+        Produkt p = agenda.najdi(id);
+        zobrazDetail(p);
+        if (p == null) {
+            log("Hledání: produkt s ID " + id + " neexistuje.");
+        } else {
+            log("Hledání: " + p);
+        }
+    }
+
+    private void odeberPodleId() {
+        String id = tfHledatId.getText().trim();
+        if (id.isEmpty()) {
+            chyba("Odebrání podle ID", "Zadejte ID produktu.");
+            return;
+        }
+        Produkt p = agenda.najdi(id);
+        if (p == null) {
+            chyba("Odebrání podle ID", "Produkt s ID " + id + " neexistuje.");
+            return;
+        }
+        Alert dotaz = new Alert(Alert.AlertType.CONFIRMATION,
+                "Odebrat produkt " + p + "?", ButtonType.YES, ButtonType.NO);
+        dotaz.initOwner(okno);
+        dotaz.setHeaderText("Odebrání podle ID");
+        if (dotaz.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) {
+            return;
+        }
+        proved("Odebrání podle ID", () -> {
+            Produkt odebrany = agenda.odeber(id);
+            log("Odebrán podle ID (ze skladu i z BVS): " + odebrany);
+            zobrazDetail(null);
+        });
+    }
+
+    private void ukazVeSkladu() {
+        if (nalezeny == null || nalezeny.getSklad() == null) {
+            chyba("Ukázat ve skladu", "Nejdřív vyhledejte produkt.");
+            return;
+        }
+        Produkt p = nalezeny;
+        tlSklady[p.getSklad().getIndex()].setSelected(true);   // přepne tabulku na sklad produktu
+        zdrojVysledku = null;
+        obnov();
+        for (int i = 0; i < radky.size(); i++) {
+            if (radky.get(i).produkt() == p) {
+                tabulka.getSelectionModel().select(i);
+                tabulka.scrollTo(i);
+                return;
+            }
+        }
+    }
+
+    private void zobrazDetail(Produkt p) {
+        nalezeny = p;
+        if (p == null) {
+            detail[0].setText("nenalezeno");
+            for (int i = 1; i < detail.length; i++) {
+                detail[i].setText("–");
+            }
+            return;
+        }
+        detail[0].setText(p.getId());
+        detail[1].setText(p.getNazev());
+        detail[2].setText(p.getKategorie());
+        detail[3].setText(String.format(Locale.ROOT, "%.2f Kč", p.getCena()));
+        detail[4].setText(p.getMnozstvi() + " ks");
+        detail[5].setText(p.getSklad() == null ? "–" : p.getSklad().getNazev());
+    }
+
+    private void najdiRozsah() {
+        String od = tfOd.getText().trim();
+        String doId = tfDo.getText().trim();
+        if (od.isEmpty() || doId.isEmpty()) {
+            chyba("Hledání v rozsahu", "Zadejte obě meze rozsahu.");
+            return;
+        }
+        proved("Hledání v rozsahu", () -> {
+            Produkt[] nalezene = agenda.najdiVRozsahu(od, doId);
+            zdrojVysledku = () -> agenda.najdiVRozsahu(od, doId);
+            popisVysledku = "Rozsah ID " + od + " – " + doId;
+            log("Rozsah " + od + " – " + doId + ": nalezeno " + nalezene.length + " produktů.");
+        });
+    }
+
+    private void projdiStrom() {
+        eTypProhl typ = rbSirka.isSelected() ? eTypProhl.SIRKA : eTypProhl.HLOUBKA;
+        String nazev = typ == eTypProhl.SIRKA ? "do šířky" : "do hloubky (in-order)";
+        proved("Průchod BVS", () -> {
+            zdrojVysledku = () -> {
+                List<Produkt> poradi = new ArrayList<>();
+                for (Iterator<Produkt> it = agenda.vytvorIterator(typ); it.hasNext(); ) {
+                    poradi.add(it.next());
+                }
+                return poradi.toArray(new Produkt[0]);
+            };
+            popisVysledku = "Průchod BVS " + nazev;
+            log("Průchod BVS " + nazev + ": " + agenda.getPocetVeStromu() + " uzlů.");
+        });
+    }
+
+    private void vybuduj() {
+        proved("Vybudování BVS", () -> {
+            int pred = agenda.getVyskaStromu();
+            agenda.vybuduj();
+            log("BVS vybudován: výška " + pred + " → " + agenda.getVyskaStromu()
+                    + " (" + agenda.getPocetVeStromu() + " uzlů).");
+        });
+    }
+
+    // nejmenší možná výška stromu s n uzly: ⌈log2(n + 1)⌉
+    private static int optimalniVyska(int n) {
+        return 32 - Integer.numberOfLeadingZeros(n);
     }
 
     // ---------------------------------------------------------------- soubory
@@ -694,8 +981,11 @@ public class ProgSklady extends Application {
             return;
         }
         proved("Import dat", () -> {
-            int n = sklady.importData(f.getPath());
-            log("Import ze souboru " + f.getName() + ": načteno " + n + " produktů.");
+            int n = agenda.importData(f.getPath());
+            int dupl = agenda.getPosledniDuplicity();
+            log("Import ze souboru " + f.getName() + ": načteno " + n + " produktů"
+                    + (dupl > 0 ? ", přeskočeno " + dupl + " s už existujícím ID" : "") + ". "
+                    + "Výška BVS: " + agenda.getVyskaStromu() + ".");
         });
     }
 
@@ -756,43 +1046,63 @@ public class ProgSklady extends Application {
     private void obnov() {
         enumSklad vybrany = vybranySklad();
         radky.clear();
-        for (enumSklad s : enumSklad.values()) {
-            if (vybrany != null && s != vybrany) {
-                continue;
+        if (zdrojVysledku != null) {
+            // výsledek hledání v rozsahu / průchodu BVS (počítá se znovu, ať odpovídá aktuálnímu stavu)
+            for (Produkt p : zdrojVysledku.get()) {
+                radky.add(new Radek(p.getSklad(), p, p == aktualniProdukt(p.getSklad())));
             }
-            Produkt aktualni = aktualniProdukt(s);
-            Produkt[] produkty = aktivniLimit == null
-                    ? sklady.zobrazProdukty(s)
-                    : sklady.zobrazProduktyPodLimitem(s, aktivniLimit);
-            for (Produkt p : produkty) {
-                radky.add(new Radek(s, p, p == aktualni));
+        } else {
+            for (enumSklad s : enumSklad.values()) {
+                if (vybrany != null && s != vybrany) {
+                    continue;
+                }
+                Produkt aktualni = aktualniProdukt(s);
+                Produkt[] produkty = aktivniLimit == null
+                        ? agenda.zobrazProdukty(s)
+                        : agenda.zobrazProduktyPodLimitem(s, aktivniLimit);
+                for (Produkt p : produkty) {
+                    radky.add(new Radek(s, p, p == aktualni));
+                }
             }
         }
+        btZpet.setVisible(zdrojVysledku != null);
+        btZpet.setManaged(zdrojVysledku != null);
 
         // počty produktů na přepínačích skladů
         int celkem = 0;
         for (enumSklad s : enumSklad.values()) {
-            int n = sklady.zobrazProdukty(s).length;
+            int n = agenda.zobrazProdukty(s).length;
             celkem += n;
             tlSklady[s.getIndex()].setText(s.getNazev() + "  " + n);
         }
         tlVsechny.setText("Všechny sklady  " + celkem);
 
-        String kde = vybrany == null ? "Všechny sklady" : vybrany.getNazev();
-        String filtr = aktivniLimit == null ? "" : "  ·  množství < " + aktivniLimit;
-        lblNadpis.setText(kde + "  ·  " + radky.size() + " produktů" + filtr);
+        if (zdrojVysledku != null) {
+            lblNadpis.setText(popisVysledku + "  ·  " + radky.size() + " produktů");
+        } else {
+            String kde = vybrany == null ? "Všechny sklady" : vybrany.getNazev();
+            String filtr = aktivniLimit == null ? "" : "  ·  množství < " + aktivniLimit;
+            lblNadpis.setText(kde + "  ·  " + radky.size() + " produktů" + filtr);
+        }
 
-        float prumer = sklady.zjistiPrumernouCenu(vybrany);
+        float prumer = agenda.zjistiPrumernouCenu(vybrany);
         String prumerText = String.format(Locale.ROOT, "%.2f Kč", prumer);
         lblPrumerVelky.setText(prumerText + (vybrany == null ? "  (všechny sklady)" : "  (" + vybrany.getNazev() + ")"));
         lblPrumer.setText("Průměrná cena za kus: " + prumerText);
         lblPocet.setText("Produktů celkem: " + celkem);
+
+        int uzly = agenda.getPocetVeStromu();
+        int vyska = agenda.getVyskaStromu();
+        lblStrom.setText("BVS: " + uzly + " uzlů, výška " + vyska);
+        lblStromPocet.setText(String.valueOf(uzly));
+        lblStromVyska.setText(String.valueOf(vyska));
+        lblStromOptimum.setText(String.valueOf(optimalniVyska(uzly)));
     }
 
     // aktuální produkt skladu, nebo null, když je sklad prázdný
     private Produkt aktualniProdukt(enumSklad s) {
         try {
-            return sklady.zpristupniProdukt(enumPozice.AKTUALNI, s);   // zpristupniAktualni pozici nemění
+            return agenda.zpristupniProdukt(enumPozice.AKTUALNI, s);   // zpristupniAktualni pozici nemění
         } catch (RuntimeException e) {
             return null;
         }
