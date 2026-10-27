@@ -7,9 +7,16 @@ import java.util.Iterator;
 
 // Fronta (FIFO - first in, first out) nad seznamem ze semestrální práce A.
 // Vkládá se na konec seznamu, odebírá se ze začátku, obojí O(1).
+/*
+ * ОЧЕРЕДЬ поверх двусвязного списка из работы A.
+ *     vloz   -> vlozPosledni (встать в конец очереди)   O(1)
+ *     odeber -> odeberPrvni  (выйти из начала очереди)   O(1)
+ * Обе операции O(1) только потому, что у списка есть указатели и на first, и на last.
+ * Пример: vloz(1), vloz(2), vloz(3) -> список [1 2 3] -> odeber() вернёт 1, потом 2, потом 3.
+ */
 public class AbstrFIFO<T> implements IAbstrLifoFifo<T> {
 
-    private final IAbstrDoubleList<T> seznam = new AbstrDoubleList<>();
+    private final IAbstrDoubleList<T> seznam = new AbstrDoubleList<>();   // данные очереди лежат в списке
 
     @Override
     public void zrus() {

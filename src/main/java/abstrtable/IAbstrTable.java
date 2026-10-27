@@ -5,6 +5,13 @@ import abstrdoublelist.IAbstrDoubleList;
 import java.util.Iterator;
 
 // Vyhledávací tabulka realizovaná binárním vyhledávacím stromem (BVS)
+/*
+ * "Таблица" = хранилище пар ключ -> значение (как Map в Java), где главное — быстрый
+ * поиск по ключу. Реализована деревом поиска (AbstrTable).
+ * K — тип ключа (у нас String = ID продукта), обязан быть Comparable, чтобы ключи
+ *     можно было сравнивать; V — тип значения (у нас Produkt).
+ * Подробные объяснения каждого метода — в AbstrTable.java.
+ */
 public interface IAbstrTable<K extends Comparable<K>, V> {
 
     // zruší celou tabulku
