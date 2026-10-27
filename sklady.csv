@@ -1,0 +1,61 @@
+﻿sklad;id;nazev;kategorie;cena;mnozstvi
+1;P001;Notebook Lenovo ThinkBook;Elektronika;18990.00;7
+1;P002;Monitor 27 palcu;Elektronika;5290.00;14
+1;P003;Klavesnice USB;Elektronika;649.00;32
+1;P004;Mys bezdratova;Elektronika;499.00;3
+1;P005;Papir A4 80g 500 listu;Spotrebni material;129.90;85
+1;P006;Toner cerna;Spotrebni material;1890.00;9
+1;P007;Kancelarska zidle;Nabytek;3990.00;4
+1;P008;Stul 160x80 cm;Nabytek;4590.00;6
+1;P009;Prodlužovaci kabel 5 m;Elektro;349.00;21
+1;P010;USB flash disk 64 GB;Elektronika;299.00;18
+1;P011;Webkamera Full HD;Elektronika;1190.00;2
+1;P012;Sluchatka s mikrofonem;Elektronika;890.00;11
+2;P013;Aku vrtacka 18 V;Naradi;2490.00;8
+2;P014;Sada sroubovaku;Naradi;790.00;17
+2;P015;Kombinovane kleste;Naradi;359.00;28
+2;P016;Kladivo 500 g;Naradi;289.00;5
+2;P017;Ochranna prilba;Ochranna pomucka;419.00;24
+2;P018;Pracovni rukavice;Ochranna pomucka;89.00;3
+2;P019;Ochranna bryle;Ochranna pomucka;129.00;12
+2;P020;Svinovaci metr 5 m;Naradi;179.00;35
+2;P021;Vodovaha 60 cm;Naradi;459.00;9
+2;P022;Sada vrtaku do kovu;Naradi;699.00;4
+2;P023;Uhlova bruska;Naradi;1690.00;6
+2;P024;Prumyslovy vysavac;Naradi;5390.00;1
+3;P025;WiFi router;Sitove prvky;1390.00;13
+3;P026;Switch 8 portu;Sitove prvky;990.00;7
+3;P027;Switch 24 portu;Sitove prvky;3490.00;2
+3;P028;Patch kabel 1 m;Sitove prvky;79.00;120
+3;P029;Patch kabel 5 m;Sitove prvky;159.00;75
+3;P030;Datova zasuvka RJ45;Sitove prvky;149.00;41
+3;P031;Patch panel 24 portu;Sitove prvky;1290.00;5
+3;P032;UPS 1000 VA;Elektro;3290.00;4
+3;P033;Napajeci adapter 12 V;Elektro;269.00;26
+3;P034;Opticky modul SFP;Sitove prvky;849.00;8
+3;P035;Rack 19 palcu 12U;Sitove prvky;4990.00;1
+3;P036;Organizator kabelu;Sitove prvky;229.00;16
+4;P037;Cistic oken 1 l;Uklid;99.00;45
+4;P038;Univerzalni cistic 1 l;Uklid;119.00;38
+4;P039;Papírove uterky 2 role;Hygiena;79.90;64
+4;P040;Tekute mydlo 5 l;Hygiena;249.00;19
+4;P041;Odpadkove pytle 120 l;Uklid;139.00;27
+4;P042;Mop komplet;Uklid;549.00;6
+4;P043;Kbelik 10 l;Uklid;129.00;11
+4;P044;Gumove rukavice;Ochranna pomucka;69.00;4
+4;P045;Dezinfekce 1 l;Hygiena;179.00;9
+4;P046;Toaletni papir 8 roli;Hygiena;159.00;33
+4;P047;Prumyslovy mop;Uklid;890.00;2
+4;P048;Davkovac mydla;Hygiena;329.00;5
+5;P049;LED zarovka 10 W;Elektro;89.00;52
+5;P050;LED panel 40 W;Elektro;899.00;10
+5;P051;Baterie AA 4 ks;Baterie;119.00;43
+5;P052;Baterie AAA 4 ks;Baterie;109.00;39
+5;P053;Nabijeci baterie AA 4 ks;Baterie;399.00;8
+5;P054;Nabijecka baterii;Baterie;649.00;3
+5;P055;Pohybove cidlo;Elektro;459.00;12
+5;P056;Zasuvka 230 V;Elektro;129.00;24
+5;P057;Vypinac nastenny;Elektro;119.00;31
+5;P058;Jistic B16;Elektro;149.00;18
+5;P059;Proudovy chranic 25 A;Elektro;799.00;4
+5;P060;Multimetr digitalni;Merici technika;1290.00;2
