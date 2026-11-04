@@ -2,6 +2,16 @@ package abstrdoublelist;
 
 import java.util.Iterator;
 
+/*
+ * Интерфейс = "договор": КАКИЕ операции есть у списка, без того, КАК они сделаны.
+ * Это и есть "abstraktní datová struktura" (ADS): Sklady, AbstrLIFO и AbstrFIFO
+ * работают с типом IAbstrDoubleList и не знают, что внутри узлы со ссылками.
+ *
+ * <T> — тип хранимых данных (у нас Produkt). extends Iterable<T> — значит, по списку
+ * можно ходить циклом for-each (Java вызовет iterator()).
+ *
+ * Комментарии на чешском ниже — формулировки из задания.
+ */
 public interface IAbstrDoubleList<T> extends Iterable<T>{
     //zrušení celého seznamu,
     void zrus();
