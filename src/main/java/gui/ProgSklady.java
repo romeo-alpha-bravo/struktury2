@@ -67,39 +67,31 @@ import java.util.Locale;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-
 public class ProgSklady extends Application {
-
-
     private record Radek(enumSklad sklad, Produkt produkt, boolean aktualni) { }
 
     private static final PseudoClass AKTUALNI = PseudoClass.getPseudoClass("aktualni");
     private static final DateTimeFormatter CAS = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    // všechny operace jdou přes AgendaSklady, aby seznamy skladů a BVS zůstaly v souladu
     private final AgendaSklady agenda = new AgendaSklady();
 
     private Stage okno;
-
 
     private final ToggleGroup skupinaSkladu = new ToggleGroup();
     private final ToggleButton tlVsechny = new ToggleButton("Všechny sklady");
     private final ToggleButton[] tlSklady = new ToggleButton[enumSklad.values().length];
     private final SimpleBooleanProperty vybranyVsechny = new SimpleBooleanProperty(true);
 
-    // tabulka a filtr
     private final ObservableList<Radek> radky = FXCollections.observableArrayList();
     private final TableView<Radek> tabulka = new TableView<>(radky);
     private final Label lblNadpis = new Label();
     private final TextField tfLimit = new TextField("10");
-    private Integer aktivniLimit = null;          // null = filtr vypnutý
+    private Integer aktivniLimit = null;
     private final Button btZpet = new Button("Zpět na sklad");
 
-    // výsledek hledání v rozsahu / průchodu BVS: když není null, tabulka ukazuje jeho produkty
     private Supplier<Produkt[]> zdrojVysledku = null;
     private String popisVysledku = "";
 
-    // formulář produktu
     private final TextField tfId = new TextField();
     private final TextField tfNazev = new TextField();
     private final TextField tfKategorie = new TextField();
@@ -107,35 +99,29 @@ public class ProgSklady extends Application {
     private final TextField tfMnozstvi = new TextField();
     private final ToggleGroup skupinaPozice = new ToggleGroup();
 
-    // přesun
     private final ComboBox<enumSklad> cbZdroj = new ComboBox<>();
     private final ComboBox<enumSklad> cbCil = new ComboBox<>();
 
-    // generátor
     private final TextField tfPocet = new TextField("10");
     private final RadioButton rbDoVybraneho = new RadioButton("do vybraného skladu");
     private final RadioButton rbNahodne = new RadioButton("náhodně do všech skladů");
 
-    // hledání podle ID a v rozsahu
     private final TextField tfRychleHledani = new TextField();
     private final TextField tfHledatId = new TextField();
     private final TextField tfOd = new TextField("P010");
     private final TextField tfDo = new TextField("P020");
-    private final Label[] detail = new Label[6];   // ID, název, kategorie, cena, množství, sklad
+    private final Label[] detail = new Label[6];
     private Produkt nalezeny = null;
 
-    // BVS
     private final RadioButton rbSirka = new RadioButton("do šířky (po úrovních)");
     private final RadioButton rbHloubka = new RadioButton("do hloubky in-order (vzestupně podle ID)");
     private final Label lblStromPocet = new Label();
     private final Label lblStromVyska = new Label();
     private final Label lblStromOptimum = new Label();
 
-    // pravý panel (kvůli přepnutí na záložku Hledání z rychlého hledání)
     private TabPane pravyPanel;
     private Tab tabHledani;
 
-    // statistiky, log, stavový řádek
     private final Label lblPrumerVelky = new Label("–");
     private final TextArea taLog = new TextArea();
     private final Label lblPocet = new Label();
@@ -172,8 +158,6 @@ public class ProgSklady extends Application {
                 + "Produkty se ukládají do seznamů skladů a zároveň do BVS podle ID.");
         obnov();
     }
-
-    // ================================================================ sestavení okna
 
     private MenuBar vytvorMenu() {
         MenuItem miImport = new MenuItem("Importovat CSV…");
@@ -218,7 +202,6 @@ public class ProgSklady extends Application {
         return new MenuBar(soubor, sklad, napoveda);
     }
 
-    // tmavá lišta nahoře: název aplikace + přepínač skladů
     private HBox vytvorListuSkladu() {
         Label nazev = new Label("ProgSklady");
         nazev.getStyleClass().add("nazev-aplikace");
@@ -237,14 +220,13 @@ public class ProgSklady extends Application {
             lista.getChildren().add(tl);
         }
 
-        // kliknutí na už vybraný sklad by výběr zrušil - to nechceme, vždy je něco vybráno
         skupinaSkladu.selectedToggleProperty().addListener((obs, stary, novy) -> {
             if (novy == null) {
                 stary.setSelected(true);
                 return;
             }
             vybranyVsechny.set(novy == tlVsechny);
-            zdrojVysledku = null;                    // výběr skladu = zpět na obsah skladu
+            zdrojVysledku = null;
             enumSklad s = vybranySklad();
             if (s != null) {
                 cbZdroj.setValue(s);
@@ -278,7 +260,6 @@ public class ProgSklady extends Application {
         return lista;
     }
 
-    // tabulka s filtrem nahoře a logem dole
     private VBox vytvorStred() {
         lblNadpis.getStyleClass().add("nadpis-tabulky");
 
@@ -327,7 +308,7 @@ public class ProgSklady extends Application {
             @Override
             protected void updateItem(Integer hodnota, boolean prazdna) {
                 super.updateItem(hodnota, prazdna);
-                setText(prazdna ? null : String.valueOf(getIndex() + 1));   // pořadí v seznamu / průchodu
+                setText(prazdna ? null : String.valueOf(getIndex() + 1));
             }
         });
         TableColumn<Radek, String> sSklad = sloupec("Sklad", r -> r.sklad().getNazev(), 80);
@@ -357,7 +338,6 @@ public class ProgSklady extends Application {
         tabulka.setPlaceholder(new Label("Žádné produkty. Importujte CSV, vygenerujte produkty nebo vložte produkt."));
         tabulka.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
-        // aktuální prvek seznamu se zvýrazní (barvu určuje styl.css přes pseudotřídu :aktualni)
         tabulka.setRowFactory(tv -> new TableRow<>() {
             @Override
             protected void updateItem(Radek radek, boolean prazdny) {
@@ -371,7 +351,7 @@ public class ProgSklady extends Application {
         TableColumn<Radek, T> s = new TableColumn<>(nazev);
         s.setCellValueFactory(bunka -> new ReadOnlyObjectWrapper<>(hodnota.apply(bunka.getValue())));
         s.setPrefWidth(sirka);
-        s.setSortable(false);   // pořadí řádků = pořadí v seznamu, nesmí se přeházet
+        s.setSortable(false);
         return s;
     }
 
@@ -402,7 +382,6 @@ public class ProgSklady extends Application {
         upozorneni.visibleProperty().bind(vybranyVsechny);
         upozorneni.managedProperty().bind(vybranyVsechny);
 
-        // --- pohyb v seznamu = operace zpřístupni
         Button btPrvni = navigace("« První", enumPozice.PRVNI);
         Button btAktualni = navigace("Aktuální", enumPozice.AKTUALNI);
         Button btPosledni = navigace("Poslední »", enumPozice.POSLEDNI);
@@ -423,7 +402,6 @@ public class ProgSklady extends Application {
             pohyb.getColumnConstraints().add(c);
         }
 
-        // --- formulář (vstup z klávesnice)
         GridPane formular = new GridPane();
         formular.setHgap(8);
         formular.setVgap(6);
@@ -437,7 +415,6 @@ public class ProgSklady extends Application {
         c1.setHgrow(Priority.ALWAYS);
         formular.getColumnConstraints().addAll(c0, c1);
 
-        // --- pozice pro vložení / odebrání
         FlowPane pozice = new FlowPane(6, 6);
         for (enumPozice p : enumPozice.values()) {
             ToggleButton tl = new ToggleButton(nazevPozice(p));
@@ -471,7 +448,6 @@ public class ProgSklady extends Application {
             b.disableProperty().bind(vybranyVsechny);
         }
 
-        // Enter v kterémkoli poli formuláře = vložit
         for (TextField tf : List.of(tfId, tfNazev, tfKategorie, tfCena, tfMnozstvi)) {
             tf.setOnAction(e -> vloz());
         }
@@ -542,7 +518,6 @@ public class ProgSklady extends Application {
     }
 
     private VBox zalozkaHledani() {
-        // --- jedno ID
         tfHledatId.setPromptText("např. P033");
         tfHledatId.setOnAction(e -> najdiPodleId());
         HBox.setHgrow(tfHledatId, Priority.ALWAYS);
@@ -576,7 +551,6 @@ public class ProgSklady extends Application {
         HBox.setHgrow(btOdeberId, Priority.ALWAYS);
         HBox akceId = new HBox(8, btUkaz, btOdeberId);
 
-        // --- rozsah
         tfOd.setPrefColumnCount(6);
         tfDo.setPrefColumnCount(6);
         tfOd.setOnAction(e -> najdiRozsah());
@@ -680,8 +654,6 @@ public class ProgSklady extends Application {
         return radek;
     }
 
-    // ---------------------------------------------------------------- malé pomocníky pro sestavení okna
-
     private Label sekce(String text) {
         Label l = new Label(text);
         l.getStyleClass().add("sekce");
@@ -717,7 +689,7 @@ public class ProgSklady extends Application {
 
             @Override
             public enumSklad fromString(String text) {
-                return null;   // ComboBox není editovatelný, nepoužívá se
+                return null;
             }
         });
         cb.setMaxWidth(Double.MAX_VALUE);
@@ -732,8 +704,6 @@ public class ProgSklady extends Application {
             case AKTUALNI -> "aktuální";
         };
     }
-
-    // ================================================================ operace
 
     private void zpristupni(enumPozice pozice) {
         enumSklad s = vybranySklad();
@@ -785,7 +755,7 @@ public class ProgSklady extends Application {
         enumSklad zdroj = cbZdroj.getValue();
         enumSklad cil = cbCil.getValue();
         proved("Přesun produktu", () -> {
-            Produkt p = agenda.zpristupniProdukt(enumPozice.AKTUALNI, zdroj);   // jen pro zápis do logu
+            Produkt p = agenda.zpristupniProdukt(enumPozice.AKTUALNI, zdroj);
             agenda.presunProdukt(zdroj, cil);
             log("Přesun: " + p + " ze skladu " + zdroj.getCislo() + " na konec skladu " + cil.getCislo());
         });
@@ -818,7 +788,7 @@ public class ProgSklady extends Application {
         proved("Filtr pod limitem", () -> {
             int limit = celeCislo(tfLimit.getText(), "Limit");
             aktivniLimit = limit;
-            zdrojVysledku = null;                    // filtr se týká obsahu skladů
+            zdrojVysledku = null;
             enumSklad s = vybranySklad();
             int nalezeno = agenda.zobrazProduktyPodLimitem(s, limit).length;
             log("Produkty s množstvím menším než " + limit + " (" + (s == null ? "všechny sklady" : s.getNazev())
@@ -845,8 +815,6 @@ public class ProgSklady extends Application {
             log("Zrušeno: " + co + " (seznamy i BVS).");
         });
     }
-
-    // ---------------------------------------------------------------- BVS: hledání, rozsah, průchod
 
     private void najdiPodleId() {
         String id = tfHledatId.getText().trim();
@@ -898,7 +866,7 @@ public class ProgSklady extends Application {
             return;
         }
         Produkt p = nalezeny;
-        tlSklady[p.getSklad().getIndex()].setSelected(true);   // přepne tabulku na sklad produktu
+        tlSklady[p.getSklad().getIndex()].setSelected(true);
         zdrojVysledku = null;
         obnov();
         for (int i = 0; i < radky.size(); i++) {
@@ -967,8 +935,6 @@ public class ProgSklady extends Application {
         });
     }
 
-    // ---------------------------------------------------------------- soubory
-
     private void importuj() {
         FileChooser fc = new FileChooser();
         fc.setTitle("Import dat (sklad;id;nazev;kategorie;cena;mnozstvi)");
@@ -999,7 +965,6 @@ public class ProgSklady extends Application {
         if (f == null) {
             return;
         }
-        // stejný formát jako vstupní soubor, takže výpis jde zase importovat
         List<String> vystup = new ArrayList<>();
         vystup.add("sklad;id;nazev;kategorie;cena;mnozstvi");
         for (Radek r : radky) {
@@ -1040,14 +1005,10 @@ public class ProgSklady extends Application {
         }
     }
 
-    // ================================================================ zobrazení
-
-    // znovu naplní tabulku, popisky skladů a stavový řádek podle aktuálního stavu skladů
     private void obnov() {
         enumSklad vybrany = vybranySklad();
         radky.clear();
         if (zdrojVysledku != null) {
-            // výsledek hledání v rozsahu / průchodu BVS (počítá se znovu, ať odpovídá aktuálnímu stavu)
             for (Produkt p : zdrojVysledku.get()) {
                 radky.add(new Radek(p.getSklad(), p, p == aktualniProdukt(p.getSklad())));
             }
@@ -1068,7 +1029,6 @@ public class ProgSklady extends Application {
         btZpet.setVisible(zdrojVysledku != null);
         btZpet.setManaged(zdrojVysledku != null);
 
-        // počty produktů na přepínačích skladů
         int celkem = 0;
         for (enumSklad s : enumSklad.values()) {
             int n = agenda.zobrazProdukty(s).length;
@@ -1099,16 +1059,14 @@ public class ProgSklady extends Application {
         lblStromOptimum.setText(String.valueOf(agenda.getNejmensiVyskaStromu()));
     }
 
-    // aktuální produkt skladu, nebo null, když je sklad prázdný
     private Produkt aktualniProdukt(enumSklad s) {
         try {
-            return agenda.zpristupniProdukt(enumPozice.AKTUALNI, s);   // zpristupniAktualni pozici nemění
+            return agenda.zpristupniProdukt(enumPozice.AKTUALNI, s);
         } catch (RuntimeException e) {
             return null;
         }
     }
 
-    // vybere v tabulce řádek s aktuálním prvkem a posune na něj
     private void oznacAktualni(enumSklad s) {
         for (int i = 0; i < radky.size(); i++) {
             Radek r = radky.get(i);
@@ -1121,9 +1079,6 @@ public class ProgSklady extends Application {
         tabulka.getSelectionModel().clearSelection();
     }
 
-    // ================================================================ pomocné
-
-    // null = "Všechny sklady"
     private enumSklad vybranySklad() {
         Toggle t = skupinaSkladu.getSelectedToggle();
         if (t == null || t == tlVsechny) {
@@ -1157,7 +1112,6 @@ public class ProgSklady extends Application {
         }
     }
 
-    // provede operaci; chybu zapíše do logu a ukáže v dialogu. Vrací true, když operace prošla.
     private boolean proved(String nazevOperace, Runnable akce) {
         boolean ok;
         try {

@@ -14,12 +14,7 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Random;
 
-/**
- * Jednoduché testy bez knihoven (JUnit není potřeba). Spuštění: v IntelliJ pravým tlačítkem → Run 'TestySklady.main()'.
- * Každý test vypíše OK / CHYBA, na konci se vypíše souhrn.
- */
 public class TestySklady {
-
     private static int celkem = 0;
     private static int chyb = 0;
 
@@ -45,8 +40,6 @@ public class TestySklady {
         System.exit(chyb == 0 ? 0 : 1);
     }
 
-    // ------------------------------------------------------------------ seznam
-
     static void testPrazdnySeznam() {
         System.out.println("-- prázdný seznam");
         IAbstrDoubleList<Integer> l = new AbstrDoubleList<>();
@@ -65,11 +58,11 @@ public class TestySklady {
     static void testVkladaniAPoradi() {
         System.out.println("-- vkládání a pořadí");
         IAbstrDoubleList<Integer> l = new AbstrDoubleList<>();
-        l.vlozPosledni(2);          // [2]       aktuální 2
-        l.vlozPrvni(1);             // [1 2]
-        l.vlozPosledni(4);          // [1 2 4]
-        l.vlozNaslednika(3);        // [1 2 3 4]  (následník aktuálního = 2)
-        l.vlozPredchudce(0);        // [1 0 2 3 4] (předchůdce aktuálního = 2)
+        l.vlozPosledni(2);
+        l.vlozPrvni(1);
+        l.vlozPosledni(4);
+        l.vlozNaslednika(3);
+        l.vlozPredchudce(0);
         kontrola(text(l).equals("1 0 2 3 4"), "pořadí po vkládání je 1 0 2 3 4, je: " + text(l));
         kontrola(zpet(l).equals("4 3 2 0 1"), "zpětné procházení (předchůdci) je 4 3 2 0 1, je: " + zpet(l));
         kontrola(!l.jePrazdny(), "seznam není prázdný");
@@ -94,13 +87,13 @@ public class TestySklady {
 
     static void testOdebirani() {
         System.out.println("-- odebírání");
-        IAbstrDoubleList<Integer> l = naplneny(1, 2, 3, 4, 5);   // aktuální = 1
+        IAbstrDoubleList<Integer> l = naplneny(1, 2, 3, 4, 5);
         kontrola(l.odeberPrvni() == 1 && text(l).equals("2 3 4 5"), "odeberPrvni");
         kontrola(l.zpristupniAktualni() == 2, "odebraný první byl aktuální → aktuální je nový první");
         kontrola(l.odeberPosledni() == 5 && text(l).equals("2 3 4"), "odeberPosledni");
         kontrola(l.odeberNaslednika() == 3 && text(l).equals("2 4"), "odeberNaslednika (aktuální = 2)");
         vyjimka(l::odeberPredchudce, AbstrDoubleListException.class, "aktuální (první) nemá předchůdce");
-        l.zpristupniPosledni();                                   // aktuální = 4
+        l.zpristupniPosledni();
         kontrola(l.odeberPredchudce() == 2 && text(l).equals("4"), "odeberPredchudce");
         vyjimka(l::odeberNaslednika, AbstrDoubleListException.class, "jediný prvek nemá následníka");
         kontrola(l.odeberPrvni() == 4 && l.jePrazdny(), "odebrání posledního zbylého prvku seznam vyprázdní");
@@ -112,10 +105,10 @@ public class TestySklady {
     static void testOdebraniAktualnihoNastaviPrvni() {
         System.out.println("-- odeberAktualni nastaví aktuální na první");
         IAbstrDoubleList<Integer> l = naplneny(1, 2, 3, 4);
-        l.zpristupniPosledni();                                   // aktuální = 4
+        l.zpristupniPosledni();
         kontrola(l.odeberAktualni() == 4, "odeberAktualni vrátí odebraný prvek");
         kontrola(l.zpristupniAktualni() == 1, "aktuální je teď první prvek");
-        l.zpristupniNaslednika();                                 // aktuální = 2
+        l.zpristupniNaslednika();
         kontrola(l.odeberAktualni() == 2 && text(l).equals("1 3"), "odebrání prvku uprostřed");
         kontrola(l.zpristupniAktualni() == 1, "aktuální je opět první");
         l.zrus();
@@ -148,7 +141,6 @@ public class TestySklady {
         kontrola(b.next() == 1, "dva iterátory se navzájem neovlivňují");
     }
 
-    /** Náhodné operace nad seznamem proti jednoduchému modelu (ArrayList + index aktuálního prvku). */
     static void testSeznamProtiReferenci() {
         System.out.println("-- náhodné operace proti referenčnímu modelu");
         Random r = new Random(42);
@@ -156,7 +148,7 @@ public class TestySklady {
         for (int pokus = 0; pokus < 200 && shoda; pokus++) {
             IAbstrDoubleList<Integer> l = new AbstrDoubleList<>();
             java.util.ArrayList<Integer> model = new java.util.ArrayList<>();
-            int akt = -1;       // index aktuálního prvku v modelu
+            int akt = -1;
             int cislo = 0;
             for (int krok = 0; krok < 300 && shoda; krok++) {
                 int op = r.nextInt(9);
@@ -195,8 +187,6 @@ public class TestySklady {
         }
         kontrola(shoda, "200 náhodných scénářů po 300 krocích se shoduje s modelem");
     }
-
-    // ------------------------------------------------------------------ Sklady
 
     static void testImport() throws Exception {
         System.out.println("-- import dat");
@@ -244,9 +234,9 @@ public class TestySklady {
         enumSklad k = enumSklad.SKLAD_2;
         s.vlozProdukt(p("A", 10, 1), enumPozice.POSLEDNI, k);
         s.vlozProdukt(p("B", 20, 2), enumPozice.POSLEDNI, k);
-        s.vlozProdukt(p("C", 30, 3), enumPozice.PRVNI, k);                 // C A B, aktuální A
-        s.vlozProdukt(p("D", 40, 4), enumPozice.NASLEDNIK, k);             // C A D B
-        s.vlozProdukt(p("E", 50, 5), enumPozice.PREDCHUDCE, k);            // C E A D B
+        s.vlozProdukt(p("C", 30, 3), enumPozice.PRVNI, k);
+        s.vlozProdukt(p("D", 40, 4), enumPozice.NASLEDNIK, k);
+        s.vlozProdukt(p("E", 50, 5), enumPozice.PREDCHUDCE, k);
         kontrola(ids(s.zobrazProdukty(k)).equals("C E A D B"), "pořadí produktů C E A D B, je: " + ids(s.zobrazProdukty(k)));
         kontrola(s.zpristupniProdukt(enumPozice.AKTUALNI, k).getId().equals("A"), "aktuální je A");
         kontrola(s.zpristupniProdukt(enumPozice.NASLEDNIK, k).getId().equals("D"), "následník je D");
@@ -288,7 +278,7 @@ public class TestySklady {
         s.vlozProdukt(p("A", 1, 1), enumPozice.POSLEDNI, enumSklad.SKLAD_1);
         s.vlozProdukt(p("B", 1, 1), enumPozice.POSLEDNI, enumSklad.SKLAD_1);
         s.vlozProdukt(p("X", 1, 1), enumPozice.POSLEDNI, enumSklad.SKLAD_2);
-        s.zpristupniProdukt(enumPozice.POSLEDNI, enumSklad.SKLAD_1);       // aktuální = B
+        s.zpristupniProdukt(enumPozice.POSLEDNI, enumSklad.SKLAD_1);
         s.presunProdukt(enumSklad.SKLAD_1, enumSklad.SKLAD_2);
         kontrola(ids(s.zobrazProdukty(enumSklad.SKLAD_1)).equals("A"), "ze skladu 1 zmizel B");
         kontrola(ids(s.zobrazProdukty(enumSklad.SKLAD_2)).equals("X B"), "B je na konci skladu 2");
@@ -335,8 +325,6 @@ public class TestySklady {
         kontrola(vsechnySklady, "náhodný sklad je vždy platný");
     }
 
-    // ------------------------------------------------------------------ pomocné
-
     static Produkt p(String id, double cena, int mnozstvi) {
         return new Produkt(id, "Produkt " + id, "Test", cena, mnozstvi);
     }
@@ -358,7 +346,6 @@ public class TestySklady {
         return l;
     }
 
-    /** Obsah seznamu zepředu dozadu (přes iterátor). */
     static <T> String text(IAbstrDoubleList<T> l) {
         StringBuilder sb = new StringBuilder();
         for (T x : l) {
@@ -367,7 +354,6 @@ public class TestySklady {
         return sb.toString().trim();
     }
 
-    /** Obsah seznamu odzadu dopředu (přes zpristupniPredchudce) - kontroluje i zpětné odkazy. Mění aktuální prvek! */
     static <T> String zpet(IAbstrDoubleList<T> l) {
         StringBuilder sb = new StringBuilder();
         sb.append(l.zpristupniPosledni());
