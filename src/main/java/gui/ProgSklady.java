@@ -459,7 +459,7 @@ public class ProgSklady extends Application {
         btVlozit.getStyleClass().add("primarni");
         btVlozit.setMaxWidth(Double.MAX_VALUE);
         btVlozit.setOnAction(e -> vloz());
-        Button btOdebrat = new Button("Odebrat z pozice");
+        Button btOdebrat = new Button("Odebrat celý záznam");
         btOdebrat.getStyleClass().add("nebezpecne");
         btOdebrat.setMaxWidth(Double.MAX_VALUE);
         btOdebrat.setOnAction(e -> odeber());
@@ -477,7 +477,9 @@ public class ProgSklady extends Application {
         }
 
         Label napoveda = new Label("Předchůdce a následník se počítají vůči aktuálnímu (žlutému) prvku. "
-                + "Pozici \"aktuální\" lze použít jen pro odebrání.");
+                + "Pozici \"aktuální\" lze použít jen pro odebrání. "
+                + "Odebrání odstraní celý záznam produktu (se všemi kusy) ze skladu i z BVS, "
+                + "množství se po kusech nesnižuje.");
         napoveda.setWrapText(true);
         napoveda.getStyleClass().add("napoveda");
 
@@ -566,7 +568,7 @@ public class ProgSklady extends Application {
         Button btUkaz = new Button("Ukázat ve skladu");
         btUkaz.setMaxWidth(Double.MAX_VALUE);
         btUkaz.setOnAction(e -> ukazVeSkladu());
-        Button btOdeberId = new Button("Odebrat podle ID");
+        Button btOdeberId = new Button("Odebrat celý záznam");
         btOdeberId.getStyleClass().add("nebezpecne");
         btOdeberId.setMaxWidth(Double.MAX_VALUE);
         btOdeberId.setOnAction(e -> odeberPodleId());
@@ -775,7 +777,7 @@ public class ProgSklady extends Application {
         enumPozice pozice = vybranaPozice();
         proved("Odebrání produktu", () -> {
             Produkt p = agenda.odeberProdukt(pozice, s);
-            log(s.getNazev() + ": odebrán " + nazevPozice(pozice) + " (i z BVS) → " + p);
+            log(s.getNazev() + ": odebrán celý záznam, " + nazevPozice(pozice) + " (i z BVS) → " + p);
         });
     }
 
@@ -874,15 +876,18 @@ public class ProgSklady extends Application {
             return;
         }
         Alert dotaz = new Alert(Alert.AlertType.CONFIRMATION,
-                "Odebrat produkt " + p + "?", ButtonType.YES, ButtonType.NO);
+                "Odebrat celý záznam produktu?\n\n" + p + "\n\n"
+                + "Odstraní se produkt se všemi " + p.getMnozstvi() + " ks ze skladu i z BVS "
+                + "(množství se po kusech nesnižuje).",
+                ButtonType.YES, ButtonType.NO);
         dotaz.initOwner(okno);
-        dotaz.setHeaderText("Odebrání podle ID");
+        dotaz.setHeaderText("Odebrání celého záznamu");
         if (dotaz.showAndWait().orElse(ButtonType.NO) != ButtonType.YES) {
             return;
         }
         proved("Odebrání podle ID", () -> {
             Produkt odebrany = agenda.odeber(id);
-            log("Odebrán podle ID (ze skladu i z BVS): " + odebrany);
+            log("Odebrán celý záznam podle ID (ze skladu i z BVS): " + odebrany);
             zobrazDetail(null);
         });
     }
@@ -960,11 +965,6 @@ public class ProgSklady extends Application {
             log("BVS vybudován: výška " + pred + " → " + agenda.getVyskaStromu()
                     + " (" + agenda.getPocetVeStromu() + " uzlů).");
         });
-    }
-
-    // nejmenší možná výška stromu s n uzly: ⌈log2(n + 1)⌉
-    private static int optimalniVyska(int n) {
-        return 32 - Integer.numberOfLeadingZeros(n);
     }
 
     // ---------------------------------------------------------------- soubory
@@ -1096,7 +1096,7 @@ public class ProgSklady extends Application {
         lblStrom.setText("BVS: " + uzly + " uzlů, výška " + vyska);
         lblStromPocet.setText(String.valueOf(uzly));
         lblStromVyska.setText(String.valueOf(vyska));
-        lblStromOptimum.setText(String.valueOf(optimalniVyska(uzly)));
+        lblStromOptimum.setText(String.valueOf(agenda.getNejmensiVyskaStromu()));
     }
 
     // aktuální produkt skladu, nebo null, když je sklad prázdný

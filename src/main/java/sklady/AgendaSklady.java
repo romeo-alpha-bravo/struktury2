@@ -121,6 +121,11 @@ public class AgendaSklady {
         return strom.getVyska();
     }
 
+    // nejmenší možná výška BVS (kterou dá vybuduj()); počítá se v AbstrTable
+    public int getNejmensiVyskaStromu() {
+        return strom.getNejmensiVyska();
+    }
+
     // ================================================================ operace ze semestrální práce A
 
     public void vlozProdukt(Produkt produkt, enumPozice pozice, enumSklad sklad) {
