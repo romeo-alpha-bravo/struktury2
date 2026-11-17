@@ -9,36 +9,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-// Modul AgendaSklady: navazuje na Sklady (seznamy produktů po skladech) a přidává
-// vyhledávací BVS podle ID produktu. Hlídá, aby obě struktury obsahovaly stejné produkty:
-//  - vložení / import / generování: nastaví produkt.sklad, vloží do seznamu i do BVS
-//  - odebrání: odstraní produkt ze seznamu i z BVS
-//  - přesun: změní jen produkt.sklad a seznamy, BVS ne (klíč ID se nemění)
-// BVS ukládá jen odkazy na tytéž objekty Produkt, žádné kopie.
-/*
- * ПО-РУССКИ. AgendaSklady — "клей" между двумя структурами:
- *
- *    Sklady (5 списков)                     AbstrTable (дерево поиска по ID)
- *    склад 1: [P001] [P002] ...              key "P001" -> ссылка на тот же P001
- *    склад 2: [P013] ...                     key "P013" -> ссылка на тот же P013
- *
- * Оба хранят ССЫЛКИ на одни и те же объекты Produkt. Задача класса — чтобы в них
- * всегда были ОДНИ И ТЕ ЖЕ продукты (это проверяет тест soulad() в TestyAgenda):
- *  - вставка: сначала проверить, что ID нет в дереве (ID уникален во ВСЕХ складах),
- *             потом вставить в список, и только если получилось — в дерево;
- *  - удаление: убрать из обоих мест;
- *  - перенос между складами: меняется только список и produkt.sklad.
- *    Дерево НЕ трогаем: ключ (ID) тот же, и в дереве лежит ссылка на тот же объект,
- *    поэтому новый склад виден через неё автоматически.
- * Дерево балансируется ТОЛЬКО методом vybuduj() (так в задании).
- */
 public class AgendaSklady {
-
     private final Sklady sklady = new Sklady();
     private final IAbstrTable<String, Produkt> strom = new AbstrTable<>();
     private final GeneratorProduktu generator;
 
-    private int posledniDuplicity;   // kolik řádků přeskočil poslední import kvůli duplicitnímu ID
+    private int posledniDuplicity;
 
     public AgendaSklady() {
         this(new GeneratorProduktu());
@@ -48,20 +24,10 @@ public class AgendaSklady {
         this.generator = generator;
     }
 
-    // ================================================================ podle ID (BVS)
-
-    // vyhledá produkt podle ID, O(h); vrací null, když neexistuje
-    // Поиск по ID — в дереве, O(h). Без дерева пришлось бы перебирать все списки: O(n).
     public Produkt najdi(String id) {
         return strom.najdi(upravId(id));
     }
 
-    // vloží produkt do seznamu skladu na zadanou pozici a do BVS; duplicitní ID odmítne
-    // Порядок шагов важен:
-    //   1) дубликат? -> отказ, ничего не изменено;
-    //   2) вставка в список (может упасть, например NASLEDNIK в пустом складе) -> тогда до дерева
-    //      дело не доходит, и структуры остаются согласованными;
-    //   3) вставка в дерево (упасть уже не может: дубликат проверен в шаге 1).
     public void vloz(Produkt produkt, enumPozice pozice, enumSklad sklad) {
         if (produkt == null) {
             throw new IllegalArgumentException("Produkt nesmí být null.");
@@ -71,13 +37,10 @@ public class AgendaSklady {
             throw new IllegalArgumentException("Produkt s ID " + produkt.getId() + " už existuje ("
                     + existujici.getSklad().getNazev() + "). ID musí být jedinečné napříč sklady.");
         }
-        sklady.vlozProdukt(produkt, pozice, sklad);   // může selhat (např. následník v prázdném skladu)
-        strom.vloz(produkt.getId(), produkt);         // sem se dojde jen po úspěšném vložení do seznamu
+        sklady.vlozProdukt(produkt, pozice, sklad);
+        strom.vloz(produkt.getId(), produkt);
     }
 
-    // odebere produkt podle ID z BVS i ze seznamu jeho skladu; vrací null, když neexistuje
-    // Удаление по ID: дерево находит продукт за O(h), из списка удаляем этот объект (O(n),
-    // т.к. список умеет удалять только по позиции), из дерева — по ключу (O(h)).
     public Produkt odeber(String id) {
         Produkt produkt = strom.najdi(upravId(id));
         if (produkt == null) {
@@ -88,10 +51,6 @@ public class AgendaSklady {
         return produkt;
     }
 
-    // produkty s ID v intervalu <idOd; idDo> včetně mezí, vzestupně podle ID; nic -> prázdné pole
-    // Диапазон ID (обе границы включительно) — делегируем дереву, оно возвращает наш список,
-    // здесь только переливаем в массив (так требует сигнатура в задании).
-    // ID сравниваются как СТРОКИ: "P010" < "P9", поэтому важны ведущие нули.
     public Produkt[] najdiVRozsahu(String idOd, String idDo) {
         IAbstrDoubleList<Produkt> nalezene = strom.najdiVRozsahu(upravId(idOd), upravId(idDo));
         List<Produkt> vysledek = new ArrayList<>();
@@ -101,14 +60,10 @@ public class AgendaSklady {
         return vysledek.toArray(new Produkt[0]);
     }
 
-    // vybuduje vyvážený BVS volbou středních ID (jediné místo, kde se strom vyvažuje)
-    // Перестроить дерево в сбалансированное (после импорта seřazených ID оно вырождено).
     public void vybuduj() {
         strom.vybuduj();
     }
 
-    // iterátor produktů v BVS: do šířky nebo do hloubky (in-order = vzestupně podle ID)
-    // Обход дерева: HLOUBKA = по возрастанию ID, SIRKA = по уровням.
     public Iterator<Produkt> vytvorIterator(eTypProhl typ) {
         return strom.vytvorIterator(typ);
     }
@@ -121,12 +76,9 @@ public class AgendaSklady {
         return strom.getVyska();
     }
 
-    // nejmenší možná výška BVS (kterou dá vybuduj()); počítá se v AbstrTable
     public int getNejmensiVyskaStromu() {
         return strom.getNejmensiVyska();
     }
-
-    // ================================================================ operace ze semestrální práce A
 
     public void vlozProdukt(Produkt produkt, enumPozice pozice, enumSklad sklad) {
         vloz(produkt, pozice, sklad);
@@ -136,16 +88,12 @@ public class AgendaSklady {
         return sklady.zpristupniProdukt(pozice, sklad);
     }
 
-    // odebrání podle pozice v seznamu - produkt zmizí i z BVS
-    // удаление по позиции в списке: что удалилось из списка, то убираем и из дерева
     public Produkt odeberProdukt(enumPozice pozice, enumSklad sklad) {
         Produkt produkt = sklady.odeberProdukt(pozice, sklad);
         strom.odeber(produkt.getId());
         return produkt;
     }
 
-    // přesune aktuální produkt zdroje na konec cíle; aktualizuje se produkt.sklad, BVS zůstává
-    // дерево не меняется (см. комментарий к классу)
     public void presunProdukt(enumSklad zdroj, enumSklad cil) {
         sklady.presunProdukt(zdroj, cil);
     }
@@ -162,9 +110,6 @@ public class AgendaSklady {
         return sklady.zobrazProduktyPodLimitem(sklad, limit);
     }
 
-    // zruší produkty skladu (null = všech skladů) v seznamech i v BVS
-    // все склады -> очищаем и дерево целиком (O(1));
-    // один склад -> сначала удаляем из дерева КАЖДЫЙ его продукт по ID, потом очищаем список
     public void zrus(enumSklad sklad) {
         if (sklad == null) {
             sklady.zrus(null);
@@ -177,13 +122,6 @@ public class AgendaSklady {
         sklady.zrus(sklad);
     }
 
-    // ================================================================ vstup dat
-
-    // import ze souboru; produkty s ID, které už existuje (v souboru nebo v aplikaci), se přeskočí
-    // Импорт: разбор файла общий с Sklady (nactiProdukty), но вставка идёт через vloz,
-    // поэтому продукт попадает и в дерево, а повторяющийся ID пропускается и считается.
-    // Замечание: ID в sklady.csv идут по порядку -> после импорта дерево вырождено
-    // (высота 60), см. vybuduj().
     public int importData(String soubor) {
         int nacteno = 0;
         int duplicity = 0;
@@ -203,10 +141,6 @@ public class AgendaSklady {
         return posledniDuplicity;
     }
 
-    // vygeneruje produkty na konec skladu (sklad == null -> každý do náhodného skladu)
-    // a vloží je i do BVS; vygenerované ID, které už existuje, se přeskočí a generuje se další
-    // Сгенерировать pocet продуктов. Если сгенерированный ID уже есть (например, его
-    // вписали вручную), он пропускается и берётся следующий. pokusu — защита от вечного цикла.
     public int generuj(int pocet, enumSklad sklad) {
         if (pocet < 0) {
             throw new IllegalArgumentException("Počet nesmí být záporný.");
@@ -225,7 +159,6 @@ public class AgendaSklady {
         return vlozeno;
     }
 
-    // " P033 " -> "P033": лишние пробелы из поля ввода не должны мешать поиску
     private static String upravId(String id) {
         if (id == null) {
             throw new IllegalArgumentException("ID nesmí být null.");

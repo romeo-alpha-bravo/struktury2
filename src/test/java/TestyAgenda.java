@@ -26,12 +26,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 
-/**
- * Testy semestrální práce B (bez JUnit). Spuštění: pravým tlačítkem → Run 'TestyAgenda.main()'.
- * Pracovní adresář = kořen projektu (kvůli sklady.csv).
- */
 public class TestyAgenda {
-
     private static int celkem = 0;
     private static int chyb = 0;
 
@@ -54,8 +49,6 @@ public class TestyAgenda {
         System.exit(chyb == 0 ? 0 : 1);
     }
 
-    // ------------------------------------------------------------------ LIFO / FIFO
-
     static void testLifoFifo() {
         System.out.println("-- zásobník a fronta");
         AbstrLIFO<Integer> z = new AbstrLIFO<>();
@@ -75,8 +68,6 @@ public class TestyAgenda {
         vyjimka(z::odeber, AbstrLifoFifoException.class, "odebrání z prázdného zásobníku");
         vyjimka(f::odeber, AbstrLifoFifoException.class, "odebrání z prázdné fronty");
     }
-
-    // ------------------------------------------------------------------ BVS
 
     static void testZakladBVS() throws Exception {
         System.out.println("-- BVS: vložení, hledání, duplicita");
@@ -100,19 +91,12 @@ public class TestyAgenda {
 
     static void testOdebiraniTriPripady() throws Exception {
         System.out.println("-- BVS: odebrání (list, jeden syn, dva synové, kořen)");
-        //            8
-        //        6        15
-        //      1   7    10
-        //         6.4     14
-        //           6.5
         AbstrTable<Double, String> t = new AbstrTable<>();
         for (double k : new double[]{8, 6, 15, 1, 7, 10, 6.4, 14, 6.5}) {
             t.vloz(k, "v" + k);
         }
         kontrola("v14.0".equals(t.odeber(14.0)) && strukturaOk(t), "odebrání listu (14)");
         kontrola("v10.0".equals(t.odeber(10.0)) && strukturaOk(t), "odebrání uzlu s jedním synem (10)");
-        // odebrání 8 (kořen, dva synové): nahradí ho nejpravější prvek levého podstromu = 7,
-        // 7 nemá pravý podstrom, na jeho místo jde jeho levý syn 6.4
         kontrola("v8.0".equals(t.odeber(8.0)) && strukturaOk(t), "odebrání kořene se dvěma syny (8)");
         kontrola(text(t.vytvorIterator(eTypProhl.SIRKA)).equals("v7.0 v6.0 v15.0 v1.0 v6.4 v6.5"),
                 "po odebrání 8 je kořenem 7 a na místě 7 je 6.4, je: " + text(t.vytvorIterator(eTypProhl.SIRKA)));
@@ -149,7 +133,7 @@ public class TestyAgenda {
         System.out.println("-- BVS: hledání v rozsahu");
         AbstrTable<String, String> t = new AbstrTable<>();
         for (int i = 1; i <= 60; i++) {
-            String k = String.format("P%03d", (i * 37) % 60 + 1);   // promíchané pořadí vkládání
+            String k = String.format("P%03d", (i * 37) % 60 + 1);
             t.vloz(k, k);
         }
         kontrola(text(t.najdiVRozsahu("P010", "P015").iterator()).equals("P010 P011 P012 P013 P014 P015"),
@@ -170,7 +154,7 @@ public class TestyAgenda {
         AbstrTable<String, String> t = new AbstrTable<>();
         for (int i = 1; i <= 1000; i++) {
             String k = String.format("K%04d", i);
-            t.vloz(k, k);                                // seřazené vkládání -> degenerovaný strom
+            t.vloz(k, k);
         }
         kontrola(t.getVyska() == 1000, "po seřazeném vkládání je strom degenerovaný (výška 1000)");
         String predtim = text(t.vytvorIterator(eTypProhl.HLOUBKA));
@@ -193,7 +177,7 @@ public class TestyAgenda {
                 s.vloz(i, i);
             }
             s.vybuduj();
-            int ocekavana = 32 - Integer.numberOfLeadingZeros(n);   // ⌈log2(n+1)⌉
+            int ocekavana = 32 - Integer.numberOfLeadingZeros(n);
             if (s.getVyska() != ocekavana || !strukturaOk(s)) {
                 kontrola(false, "vybuduj pro n = " + n);
                 return;
@@ -202,7 +186,6 @@ public class TestyAgenda {
         kontrola(true, "vybuduj dá minimální výšku pro všechna n = 1..40");
     }
 
-    // náhodné operace proti java.util.TreeMap jako vzoru
     static void testBVSProtiTreeMap() throws Exception {
         System.out.println("-- BVS: náhodné operace proti TreeMap");
         boolean shoda = true;
@@ -249,7 +232,6 @@ public class TestyAgenda {
         kontrola(shoda, "40 × 1500 náhodných operací se shoduje s TreeMap (vč. rozsahů a struktury)");
     }
 
-    // degenerovaný strom s 20 000 uzly: rekurzivní implementace by spadla na StackOverflowError
     static void testHlubokyStrom() {
         System.out.println("-- BVS: hluboký degenerovaný strom (ověření, že nic není rekurzivní)");
         AbstrTable<Integer, Integer> t = new AbstrTable<>();
@@ -280,8 +262,6 @@ public class TestyAgenda {
             kontrola(false, "StackOverflowError - někde je rekurze");
         }
     }
-
-    // ------------------------------------------------------------------ AgendaSklady
 
     static void testAgendaImport() {
         System.out.println("-- AgendaSklady: import");
@@ -325,7 +305,7 @@ public class TestyAgenda {
                 "vložení následníka do prázdného skladu selže");
         kontrola(a.najdi("C1") == null, "...a produkt se pak nedostal ani do BVS");
 
-        a.zpristupniProdukt(enumPozice.POSLEDNI, enumSklad.SKLAD_1);              // aktuální = A3
+        a.zpristupniProdukt(enumPozice.POSLEDNI, enumSklad.SKLAD_1);
         Produkt odebrany = a.odeber("A2");
         kontrola(odebrany != null && odebrany.getId().equals("A2"), "odeber podle ID vrátí produkt");
         kontrola(ids(a.zobrazProdukty(enumSklad.SKLAD_1)).equals("A1 A3") && a.najdi("A2") == null,
@@ -334,14 +314,14 @@ public class TestyAgenda {
                 "aktuální prvek zůstal na A3");
         kontrola(a.odeber("NEEXISTUJE") == null, "odeber neexistujícího ID -> null");
 
-        a.zpristupniProdukt(enumPozice.PRVNI, enumSklad.SKLAD_1);                 // aktuální = A1
+        a.zpristupniProdukt(enumPozice.PRVNI, enumSklad.SKLAD_1);
         a.presunProdukt(enumSklad.SKLAD_1, enumSklad.SKLAD_2);
         Produkt presunuty = a.najdi("A1");
         kontrola(presunuty.getSklad() == enumSklad.SKLAD_2, "přesun aktualizuje produkt.sklad");
         kontrola(ids(a.zobrazProdukty(enumSklad.SKLAD_2)).equals("B1 A1") && a.getPocetVeStromu() == 3,
                 "produkt je na konci cíle, BVS má pořád 3 záznamy");
 
-        Produkt poPozici = a.odeberProdukt(enumPozice.PRVNI, enumSklad.SKLAD_2);  // B1
+        Produkt poPozici = a.odeberProdukt(enumPozice.PRVNI, enumSklad.SKLAD_2);
         kontrola(poPozici.getId().equals("B1") && a.najdi("B1") == null, "odebrání podle pozice odstraní i z BVS");
 
         a.generuj(20, enumSklad.SKLAD_5);
@@ -355,7 +335,6 @@ public class TestyAgenda {
         kontrola(a.getPocetVeStromu() == 0 && a.zobrazProdukty(null).length == 0, "zrus(null) vyprázdní vše");
     }
 
-    // náhodné operace nad agendou, po každém kroku kontrola souladu seznamů a BVS
     static void testAgendaNahodne() {
         System.out.println("-- AgendaSklady: náhodné operace, soulad seznamů a BVS");
         boolean ok = true;
@@ -383,7 +362,6 @@ public class TestyAgenda {
                         default -> a.najdiVRozsahu("X" + r.nextInt(400), "X" + r.nextInt(400));
                     }
                 } catch (RuntimeException e) {
-                    // povolené chyby: duplicita, prázdný sklad, chybějící soused...
                 }
                 ok &= soulad(a);
             }
@@ -391,10 +369,6 @@ public class TestyAgenda {
         kontrola(ok, "15 × 600 náhodných kroků: seznamy a BVS vždy obsahují tytéž produkty");
     }
 
-    // ------------------------------------------------------------------ pomocné
-
-    // ověří: každý produkt ze seznamů je v BVS (tentýž objekt), BVS nemá nic navíc,
-    // produkt.sklad odpovídá skladu, ve kterém leží, a in-order průchod je seřazený podle ID
     static boolean soulad(AgendaSklady a) {
         Map<Produkt, Boolean> veSeznamech = new IdentityHashMap<>();
         for (enumSklad s : enumSklad.values()) {
@@ -418,7 +392,6 @@ public class TestyAgenda {
                 && a.getPocetVeStromu() == veStromu.size();
     }
 
-    // reflexí projde uzly stromu a ověří uspořádání BVS, odkazy parent a počet uzlů
     @SuppressWarnings({"unchecked", "rawtypes"})
     static boolean strukturaOk(AbstrTable<?, ?> t) throws Exception {
         Field fRoot = AbstrTable.class.getDeclaredField("root");
@@ -438,7 +411,6 @@ public class TestyAgenda {
         if (parent.get(root) != null) {
             return false;
         }
-        // (uzel, dolní mez, horní mez) - kontrola bez rekurze
         ArrayDeque<Object[]> fronta = new ArrayDeque<>();
         fronta.add(new Object[]{root, null, null});
         int pocet = 0;

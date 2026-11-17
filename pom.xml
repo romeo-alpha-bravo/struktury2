@@ -37,7 +37,6 @@
                 <configuration>
                     <mainClass>gui.ProgSklady</mainClass>
                     <options>
-                        <!-- odstraní varování "restricted method ... native access" na JDK 24+ -->
                         <option>--enable-native-access=javafx.graphics</option>
                     </options>
                 </configuration>

@@ -1,5 +1,3 @@
-/* Vzhled aplikace ProgSklady */
-
 .root {
     -fx-font-size: 13px;
     -fx-base: #eceff3;
@@ -7,7 +5,6 @@
     -fx-focus-color: #2f6fd6;
 }
 
-/* ---------- tmavá horní lišta s přepínačem skladů ---------- */
 .horni-lista {
     -fx-background-color: #1f2a37;
 }
@@ -43,7 +40,6 @@
     -fx-background-color: #33414f;
 }
 
-/* ---------- tabulka ---------- */
 .nadpis-tabulky {
     -fx-font-size: 15px;
     -fx-font-weight: bold;
@@ -68,7 +64,6 @@
     -fx-font-size: 12px;
 }
 
-/* ---------- pravý panel ---------- */
 .sekce {
     -fx-font-weight: bold;
     -fx-text-fill: #3a4a5a;
@@ -118,7 +113,6 @@
     -fx-text-fill: #1f2a37;
 }
 
-/* ---------- stavový řádek ---------- */
 .stavovy-radek {
     -fx-background-color: #e3e7ec;
     -fx-border-color: #c8ced6;
@@ -131,7 +125,6 @@
     -fx-background-radius: 3;
 }
 
-/* ---------- semestrální práce B: hledání a BVS ---------- */
 .lista-hledani {
     -fx-background-color: #33414f;
     -fx-text-fill: #ffffff;

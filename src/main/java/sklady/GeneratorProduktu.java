@@ -2,11 +2,7 @@ package sklady;
 
 import java.util.Random;
 
-
-// Генератор случайных продуктов — третий способ ввода данных (кроме клавиатуры и файла).
 public class GeneratorProduktu {
-
-    // шаблон: название, категория, диапазон цены. record = класс только с полями.
     private record Sablona(String nazev, String kategorie, double cenaOd, double cenaDo) { }
 
     private static final Sablona[] SABLONY = {
@@ -46,14 +42,12 @@ public class GeneratorProduktu {
     };
 
     private final Random nahoda;
-    private int poradi = 0;   // pro ID G0001, G0002, ...
+    private int poradi = 0;
 
     public GeneratorProduktu() {
         this(new Random());
     }
 
-
-    // с одинаковым seed генерирует одинаковую последовательность (удобно для тестов)
     public GeneratorProduktu(long seed) {
         this(new Random(seed));
     }
@@ -62,10 +56,6 @@ public class GeneratorProduktu {
         this.nahoda = nahoda;
     }
 
-
-    // Один случайный продукт: случайный шаблон, ID G0001, G0002, ... по порядку,
-    // цена в диапазоне шаблона ("магазинная", на ...90), количество 0..40.
-    // Уникальность ID во всей системе проверяет AgendaSklady.generuj, а не генератор.
     public Produkt dalsi() {
         Sablona s = SABLONY[nahoda.nextInt(SABLONY.length)];
         poradi++;
@@ -75,7 +65,6 @@ public class GeneratorProduktu {
         int mnozstvi = nahoda.nextInt(41);
         return new Produkt(id, s.nazev(), s.kategorie(), cena, mnozstvi);
     }
-
 
     public enumSklad nahodnySklad() {
         enumSklad[] vsechny = enumSklad.values();
