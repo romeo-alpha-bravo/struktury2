@@ -44,4 +44,7 @@ public interface IAbstrTable<K extends Comparable<K>, V> {
 
     // výška stromu (počet úrovní, prázdný strom = 0)
     int getVyska();
+
+    // nejmenší možná výška stromu se stejným počtem uzlů (výška po vybuduj())
+    int getNejmensiVyska();
 }

@@ -526,4 +526,22 @@ public class AbstrTable<K extends Comparable<K>, V> implements IAbstrTable<K, V>
         }
         return vyska;
     }
+
+    // НАИМЕНЬШАЯ ВОЗМОЖНАЯ ВЫСОТА для текущего числа узлов (= высота после vybuduj()).
+    // Дерево для этого не строим, считаем по вместимости уровней:
+    //   на уровне 1 помещается 1 узел, на уровне 2 — 2, на уровне 3 — 4, ...
+    //   значит, в h уровнях помещается максимум 1 + 2 + 4 + ... = 2^h - 1 узлов.
+    // Ищем наименьшее h, при котором 2^h - 1 >= pocet.
+    //   Пример: 260 узлов. h = 8 -> влезает 255 (мало), h = 9 -> 511 (хватает) -> 9.
+    // Формулой это ⌈log2(pocet + 1)⌉. O(log n).
+    @Override
+    public int getNejmensiVyska() {
+        int vyska = 0;
+        long vejdeSe = 0;                 // сколько узлов помещается в vyska уровней
+        while (vejdeSe < pocet) {
+            vyska++;
+            vejdeSe = 2 * vejdeSe + 1;    // 0 -> 1 -> 3 -> 7 -> 15 -> ... (= 2^vyska - 1)
+        }
+        return vyska;
+    }
 }
